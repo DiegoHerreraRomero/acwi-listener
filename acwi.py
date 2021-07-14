@@ -1,17 +1,21 @@
+# coding=utf-8
 import datetime
+import time
+import pytz
 import csv
 import requests
 import smtplib, ssl
+from email.mime.text import MIMEText
 
 #email credentials
 username = ""
 password = ""
 
 #date range
-today = datetime.datetime.now(datetime.timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+today = datetime.datetime.now(pytz.UTC).replace(hour=0, minute=0, second=0, microsecond=0)
 five_days = today - datetime.timedelta(days=5)
-range_end = int(today.timestamp())
-range_start = int(five_days.timestamp())
+range_end = int(time.mktime(today.timetuple()))
+range_start = int(time.mktime(five_days.timetuple()))
 
 #read csv
 before_day = ""
@@ -36,16 +40,19 @@ if down < 0:
 
   day_1 = before_day+": "+str(before_value)
   day_2 = after_day+": "+str(after_value)
-  message = """Subject: ALERTA CAÍDA DE INVERSIÓN
-
-
+  message = """
   Hola, el fondo de inversión ACWI ha tenido una caída de {down}%, 
   por favor revisa en la página https://finance.yahoo.com/quote/ACWI/chart?p=ACWI para confirmar la información.
 
   {day_1}
   {day_2}""".format(down=str(down), day_1=day_1, day_2=day_2)
 
+  msg = MIMEText(message, _charset='utf-8')
+  msg['Subject'] = 'Subject: ALERTA CAÍDA DE INVERSIÓN'
+  msg['From'] = username
+  msg['To'] = username
 
-  with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=ssl.create_default_context()) as server:
-    server.login(username, password)
-    server.sendmail(username, username, message.encode('utf-8'))
+  server = smtplib.SMTP_SSL("smtp.gmail.com", 465)
+  server.login(username, password)
+  server.sendmail(username, username, msg.as_string())
+  server.quit()
